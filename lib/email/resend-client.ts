@@ -2,6 +2,7 @@ import { Resend } from "resend";
 
 interface EmailOptions {
   to: string;
+  cc?: string[];
   subject: string;
   html: string;
   from?: string;
@@ -22,8 +23,9 @@ export async function sendPlatformEmail(options: EmailOptions) {
   const resend = new Resend(apiKey);
 
   await resend.emails.send({
-    from: options.from || "dubbl <noreply@dubbl.dev>",
+    from: options.from || "Robert Maefs Consulting <invoices@argyle.technology>",
     to: options.to,
+    ...(options.cc?.length ? { cc: options.cc } : {}),
     subject: options.subject,
     html: options.html,
     replyTo: options.replyTo || undefined,

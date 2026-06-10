@@ -70,6 +70,7 @@ export function SendDocumentDialog({
   onSent,
 }: SendDocumentDialogProps) {
   const [recipientEmail, setRecipientEmail] = useState("");
+  const [ccEmails, setCcEmails] = useState("");
   const [personalMessage, setPersonalMessage] = useState("");
   const [attachPdf, setAttachPdf] = useState(true);
   const [sending, setSending] = useState(false);
@@ -189,6 +190,9 @@ export function SendDocumentDialog({
         body: JSON.stringify({
           sendEmail: true,
           recipientEmail,
+          cc: ccEmails
+            ? ccEmails.split(",").map((e: string) => e.trim()).filter(Boolean)
+            : undefined,
           subject: `${typeLabel} ${documentNumber} from ${organizationName}`,
           templateProps: buildTemplateProps(),
           attachPdf,
@@ -290,6 +294,17 @@ export function SendDocumentDialog({
                   value={recipientEmail}
                   onChange={(e) => setRecipientEmail(e.target.value)}
                   placeholder="recipient@example.com"
+                />
+              </div>
+
+              {/* CC */}
+              <div className="space-y-2">
+                <Label className="text-xs">CC</Label>
+                <Input
+                  type="text"
+                  value={ccEmails}
+                  onChange={(e) => setCcEmails(e.target.value)}
+                  placeholder="cc@example.com (comma-separated for multiple)"
                 />
               </div>
 

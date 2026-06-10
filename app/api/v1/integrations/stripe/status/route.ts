@@ -81,7 +81,7 @@ export async function GET(request: Request) {
     });
 
     if (integrations.length === 0) {
-      return NextResponse.json({ connected: false, integrations: [] });
+      return NextResponse.json({ connected: true, integrations: [] });
     }
 
     const results = await Promise.all(

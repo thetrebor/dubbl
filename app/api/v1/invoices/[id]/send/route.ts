@@ -16,6 +16,8 @@ import { z } from "zod";
 
 const templatePropsSchema = z.object({
   organizationName: z.string(),
+  organizationAddress: z.string().optional(),
+  logoUrl: z.string().optional(),
   contactName: z.string(),
   documentType: z.string(),
   documentNumber: z.string(),
@@ -30,6 +32,7 @@ const templatePropsSchema = z.object({
 const sendBodySchema = z.object({
   sendEmail: z.literal(true),
   recipientEmail: z.string().email(),
+  cc: z.array(z.string().email()).optional(),
   subject: z.string().min(1),
   templateProps: templatePropsSchema,
   attachPdf: z.boolean().default(true),
@@ -55,9 +58,11 @@ export async function POST(
     });
 
     if (!found) return notFound("Invoice");
-    if (found.status !== "draft") {
+
+    const resendAllowed = ["draft", "sent", "overdue"].includes(found.status);
+    if (!resendAllowed) {
       return NextResponse.json(
-        { error: "Only draft invoices can be sent" },
+        { error: "Invoice cannot be sent or resent in its current state" },
         { status: 400 }
       );
     }
@@ -68,7 +73,7 @@ export async function POST(
 
     // Send email if requested
     if (emailParsed.success) {
-      const { recipientEmail, subject, templateProps, attachPdf, includePaymentLink } = emailParsed.data;
+      const { recipientEmail, cc, subject, templateProps, attachPdf, includePaymentLink } = emailParsed.data;
 
       // Generate payment link if requested
       if (includePaymentLink) {
@@ -83,6 +88,20 @@ export async function POST(
         const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
         templateProps.viewUrl = `${APP_URL}/pay/${paymentLinkToken}`;
         templateProps.buttonLabel = "Pay invoice";
+      }
+
+      // Enrich template with organization address for email footer
+      const orgForTemplate = await db.query.organization.findFirst({
+        where: eq(organization.id, ctx.organizationId),
+      });
+      if (orgForTemplate) {
+        const parts = [
+          orgForTemplate.addressStreet,
+          orgForTemplate.addressCity && orgForTemplate.addressState
+            ? `${orgForTemplate.addressCity}, ${orgForTemplate.addressState} ${orgForTemplate.addressPostalCode || ""}`
+            : null,
+        ].filter(Boolean);
+        templateProps.organizationAddress = parts.join(" · ");
       }
 
       // Render the structured email template to HTML
@@ -137,6 +156,7 @@ export async function POST(
         documentType: "invoice",
         documentId: id,
         recipientEmail,
+        cc,
         subject,
         body: html,
         attachPdf,
@@ -146,24 +166,31 @@ export async function POST(
       });
     }
 
-    // Create journal entry
-    const entry = await createInvoiceJournalEntry(
-      { organizationId: ctx.organizationId, userId: ctx.userId },
-      {
-        invoiceNumber: found.invoiceNumber,
-        total: found.total,
-        taxTotal: found.taxTotal,
-        subtotal: found.subtotal,
-        lines: found.lines.map((l) => ({
-          accountId: l.accountId,
-          amount: l.amount,
-          taxAmount: l.taxAmount,
-        })),
-        date: found.issueDate,
-      }
-    );
+    const isResend = found.status !== "draft";
 
-    // Snapshot org and contact details at send time
+    let journalEntryId: string | null = found.journalEntryId;
+
+    // Only create journal entry + snapshots on first send, not on resend
+    if (!isResend) {
+      const entry = await createInvoiceJournalEntry(
+        { organizationId: ctx.organizationId, userId: ctx.userId },
+        {
+          invoiceNumber: found.invoiceNumber,
+          total: found.total,
+          taxTotal: found.taxTotal,
+          subtotal: found.subtotal,
+          lines: found.lines.map((l) => ({
+            accountId: l.accountId,
+            amount: l.amount,
+            taxAmount: l.taxAmount,
+          })),
+          date: found.issueDate,
+        }
+      );
+      journalEntryId = entry?.id || null;
+    }
+
+    // Snapshot org and contact details (re-snapshot on resend so address/name updates are picked up)
     const senderSnapshot = await buildSenderSnapshot(ctx.organizationId);
     const recipientSnapshot = found.contact
       ? buildRecipientSnapshot(found.contact)
@@ -174,7 +201,7 @@ export async function POST(
       .set({
         status: "sent",
         sentAt: new Date(),
-        journalEntryId: entry?.id || null,
+        journalEntryId,
         senderSnapshot,
         recipientSnapshot,
         updatedAt: new Date(),
@@ -182,7 +209,14 @@ export async function POST(
       .where(eq(invoice.id, id))
       .returning();
 
-    logAudit({ ctx, action: "send", entityType: "invoice", entityId: id, changes: { previousStatus: found.status }, request });
+    logAudit({
+      ctx,
+      action: isResend ? "resend" : "send",
+      entityType: "invoice",
+      entityId: id,
+      changes: { previousStatus: found.status },
+      request,
+    });
 
     return NextResponse.json({ invoice: updated });
   } catch (err) {

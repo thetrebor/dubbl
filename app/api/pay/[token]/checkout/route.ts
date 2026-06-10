@@ -14,6 +14,10 @@ export async function POST(
 
   const { token } = await params;
 
+  // Parse optional body to determine payment method
+  const body = await request.json().catch(() => ({}));
+  const method = body.method === "bank" ? "bank" : "card";
+
   const inv = await db.query.invoice.findFirst({
     where: and(
       eq(invoice.paymentLinkToken, token),
@@ -29,10 +33,20 @@ export async function POST(
   const url = new URL(request.url);
   const baseUrl = `${url.protocol}//${url.host}`;
 
+  // Card: add 3% fee. Bank transfer (ACH): no fee
+  const isCard = method === "card";
+  const processingFee = isCard ? Math.round(inv.amountDue * 0.03) : 0;
+
   const session = await stripe.checkout.sessions.create({
     mode: "payment",
-    automatic_tax: { enabled: true },
-    payment_method_types: ["card"],
+    payment_method_types: isCard ? ["card"] : ["us_bank_account"],
+    payment_method_options: isCard
+      ? undefined
+      : {
+          us_bank_account: {
+            verification_method: "automatic",
+          },
+        },
     line_items: [
       {
         price_data: {
@@ -45,11 +59,26 @@ export async function POST(
         },
         quantity: 1,
       },
+      ...(processingFee > 0
+        ? [
+            {
+              price_data: {
+                currency: inv.currencyCode.toLowerCase(),
+                product_data: {
+                  name: "Credit card processing fee (3%)",
+                },
+                unit_amount: processingFee,
+              },
+              quantity: 1,
+            } as const,
+          ]
+        : []),
     ],
     metadata: {
       invoiceId: inv.id,
       organizationId: inv.organizationId,
       paymentLinkToken: token,
+      paymentMethod: method,
     },
     success_url: `${baseUrl}/pay/${token}?status=success`,
     cancel_url: `${baseUrl}/pay/${token}?status=cancelled`,

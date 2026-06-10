@@ -11,6 +11,7 @@ interface SendDocumentEmailOptions {
   documentType: string;
   documentId: string;
   recipientEmail: string;
+  cc?: string[];
   subject: string;
   body: string;
   attachPdf: boolean;
@@ -50,9 +51,10 @@ export async function sendDocumentEmail(options: SendDocumentEmailOptions): Prom
     } else {
       await sendPlatformEmail({
         to: options.recipientEmail,
+        cc: options.cc,
         subject: options.subject,
         html: options.body,
-        from: "dubbl <invoices@dubbl.dev>",
+        from: "Robert Maefs Consulting <invoices@argyle.technology>",
         replyTo: options.replyTo || undefined,
         attachments,
       });

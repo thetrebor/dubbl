@@ -26,8 +26,8 @@ const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "https://dubbl.dev";
 
 export const metadata: Metadata = {
   title: {
-    default: "dubbl · Open-Source Accounting, ERP & Business Management",
-    template: "%s · dubbl",
+    default: "Payments - RRM LLC",
+    template: "%s - RRM LLC",
   },
   description:
     "Free, open-source double-entry accounting with invoicing, bills, payroll, inventory, projects, and CRM. Self-host or use our cloud. API-first, MCP-ready, Apache 2.0.",

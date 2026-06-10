@@ -9,6 +9,8 @@ import { EmailLayout } from "./layout";
 
 export interface DocumentSentEmailProps {
   organizationName: string;
+  organizationAddress?: string;
+  logoUrl?: string;
   contactName: string;
   documentType: string;
   documentNumber: string;
@@ -35,6 +37,8 @@ function getHeading(typeLabel: string, organizationName: string) {
 
 export function DocumentSentEmail({
   organizationName = "Your Company",
+  organizationAddress,
+  logoUrl,
   documentType = "invoice",
   documentNumber = "",
   personalMessage,
@@ -51,7 +55,7 @@ export function DocumentSentEmail({
   const dateLabel = documentType === "quote" ? "Valid until" : "Due date";
 
   return (
-    <EmailLayout preview={preview}>
+    <EmailLayout preview={preview} organizationName={organizationName} logoUrl={logoUrl} organizationAddress={organizationAddress}>
       <Section style={content}>
         {/* Heading */}
         <Text style={heading}>

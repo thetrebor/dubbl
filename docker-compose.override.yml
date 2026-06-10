@@ -1,0 +1,4 @@
+services:
+  web:
+    ports:
+      - "3456:3000"

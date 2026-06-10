@@ -16,11 +16,21 @@ interface LayoutProps {
   preview: string;
   children: React.ReactNode;
   unsubscribeUrl?: string;
+  organizationName?: string;
+  logoUrl?: string;
+  organizationAddress?: string;
 }
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "https://dubbl.dev";
 
-export function EmailLayout({ preview, children, unsubscribeUrl }: LayoutProps) {
+export function EmailLayout({
+  preview,
+  children,
+  unsubscribeUrl,
+  organizationName,
+  logoUrl,
+  organizationAddress,
+}: LayoutProps) {
   return (
     <Html>
       <Head />
@@ -29,22 +39,19 @@ export function EmailLayout({ preview, children, unsubscribeUrl }: LayoutProps) 
         <Container style={container}>
           {/* Logo header */}
           <Section style={logoSection}>
-            <table cellPadding="0" cellSpacing="0" role="presentation">
-              <tr>
-                <td style={{ verticalAlign: "middle", paddingRight: "10px" }}>
-                  <Img
-                    src={`${APP_URL}/logo.png`}
-                    width="32"
-                    height="26"
-                    alt="dubbl"
-                    style={{ display: "block" }}
-                  />
-                </td>
-                <td style={{ verticalAlign: "middle" }}>
-                  <Text style={logoText}>dubbl</Text>
-                </td>
-              </tr>
-            </table>
+            {logoUrl ? (
+              <Img
+                src={logoUrl}
+                width="160"
+                height="auto"
+                alt={organizationName || ""}
+                style={{ display: "block", maxWidth: "160px" }}
+              />
+            ) : (
+              <Text style={logoText}>
+                {organizationName || "Invoice"}
+              </Text>
+            )}
           </Section>
 
           {children}
@@ -53,11 +60,11 @@ export function EmailLayout({ preview, children, unsubscribeUrl }: LayoutProps) 
           <Hr style={hr} />
           <Section style={footer}>
             <Text style={footerLinks}>
-              <Link href={`${APP_URL.replace('app.', '')}/terms`} style={footerLink}>
+              <Link href="https://robertmaefs.com/terms" style={footerLink}>
                 Terms of Service
               </Link>
               {" · "}
-              <Link href={`${APP_URL.replace('app.', '')}/privacy`} style={footerLink}>
+              <Link href="https://robertmaefs.com/privacy" style={footerLink}>
                 Privacy Policy
               </Link>
               {unsubscribeUrl && (
@@ -70,10 +77,10 @@ export function EmailLayout({ preview, children, unsubscribeUrl }: LayoutProps) 
               )}
             </Text>
             <Text style={companyText}>
-              Mindroot Ltd · Company No. 16543299
+              {organizationName || "Robert Maefs Consulting, LLC"}
             </Text>
             <Text style={companyText}>
-              Registered in England and Wales · 71-75 Shelton Street, London, WC2H 9JQ
+              {organizationAddress || "62 Elmwood Ave · Buffalo, NY 14201"}
             </Text>
           </Section>
         </Container>
@@ -106,11 +113,11 @@ const logoSection: React.CSSProperties = {
 };
 
 const logoText: React.CSSProperties = {
-  fontSize: "22px",
-  fontWeight: 800,
-  color: "#059669",
+  fontSize: "20px",
+  fontWeight: 700,
+  color: "#1a1a1a",
   margin: 0,
-  letterSpacing: "-0.5px",
+  letterSpacing: "-0.3px",
   lineHeight: "26px",
 };
 

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, Suspense } from "react";
 import { useParams, useSearchParams } from "next/navigation";
-import { CheckCircle2, CreditCard, FileText, Loader2, AlertCircle, Download } from "lucide-react";
+import { CheckCircle2, CreditCard, FileText, Loader2, AlertCircle, Download, Banknote } from "lucide-react";
 
 function getLocaleForCurrency(currency: string): string {
   const map: Record<string, string> = {
@@ -56,7 +56,7 @@ function PaymentPageContent() {
   const [data, setData] = useState<PaymentData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [paying, setPaying] = useState(false);
+  const [paying, setPaying] = useState<string | null>(null);
 
   useEffect(() => {
     async function fetchInvoice() {
@@ -80,15 +80,19 @@ function PaymentPageContent() {
     fetchInvoice();
   }, [token]);
 
-  async function handlePay() {
-    setPaying(true);
+  async function handlePay(method: "card" | "bank") {
+    setPaying(method);
     try {
-      const res = await fetch(`/api/pay/${token}/checkout`, { method: "POST" });
+      const res = await fetch(`/api/pay/${token}/checkout`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ method }),
+      });
       const json = await res.json();
 
       if (!res.ok) {
         setError(json.error || "Failed to create checkout session");
-        setPaying(false);
+        setPaying(null);
         return;
       }
 
@@ -97,7 +101,7 @@ function PaymentPageContent() {
       }
     } catch {
       setError("Failed to create checkout session");
-      setPaying(false);
+      setPaying(null);
     }
   }
 
@@ -241,24 +245,44 @@ function PaymentPageContent() {
           </span>
         </div>
 
-        {/* Pay button */}
-        <button
-          onClick={handlePay}
-          disabled={paying}
-          className="w-full flex items-center justify-center gap-2 rounded-lg bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-medium py-3 px-4 transition-colors"
-        >
-          {paying ? (
-            <>
-              <Loader2 className="h-4 w-4 animate-spin" />
-              Redirecting to payment...
-            </>
-          ) : (
-            <>
-              <CreditCard className="h-4 w-4" />
-              Pay Now
-            </>
-          )}
-        </button>
+        {/* Pay buttons */}
+        <div className="flex flex-col gap-2">
+          <button
+            onClick={() => handlePay("card")}
+            disabled={paying !== null}
+            className="w-full flex items-center justify-center gap-2 rounded-lg bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-medium py-3 px-4 transition-colors"
+          >
+            {paying === "card" ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Redirecting to payment...
+              </>
+            ) : (
+              <>
+                <CreditCard className="h-4 w-4" />
+                Pay with Card (+3% fee)
+              </>
+            )}
+          </button>
+
+          <button
+            onClick={() => handlePay("bank")}
+            disabled={paying !== null}
+            className="w-full flex items-center justify-center gap-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed text-gray-700 dark:text-gray-300 font-medium py-3 px-4 transition-colors"
+          >
+            {paying === "bank" ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Redirecting to payment...
+              </>
+            ) : (
+              <>
+                <Banknote className="h-4 w-4" />
+                Pay with Bank Transfer (ACH, no fee)
+              </>
+            )}
+          </button>
+        </div>
 
         {/* Download Invoice PDF */}
         <a
