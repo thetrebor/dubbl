@@ -1,3 +1,9 @@
 backups/
 logs/
 *.log
+
+# Secrets and runtime
+.env
+.env.production
+.pnpm-store/
+node_modules/
