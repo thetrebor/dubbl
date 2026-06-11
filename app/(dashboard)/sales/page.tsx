@@ -34,6 +34,7 @@ interface Invoice {
   total: number;
   amountDue: number;
   contact: { name: string } | null;
+  pendingPaymentExpectedDate: string | null;
 }
 
 interface PaymentRecord {
@@ -121,12 +122,23 @@ function buildColumns(): Column<Invoice>[] {
     {
       key: "status",
       header: "Status",
-      className: "w-24",
-      render: (r) => (
-        <Badge variant="outline" className={statusColors[r.status] || ""}>
-          {r.status}
-        </Badge>
-      ),
+      className: "w-28",
+      render: (r) => {
+        if (r.pendingPaymentExpectedDate) {
+          const d = new Date(r.pendingPaymentExpectedDate + "T00:00:00");
+          const formatted = `${d.getMonth() + 1}/${String(d.getDate()).padStart(2, "0")}`;
+          return (
+            <Badge variant="outline" className="border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-300">
+              expected {formatted}
+            </Badge>
+          );
+        }
+        return (
+          <Badge variant="outline" className={statusColors[r.status] || ""}>
+            {r.status}
+          </Badge>
+        );
+      },
     },
     {
       key: "total",

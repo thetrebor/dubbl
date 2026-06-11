@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { invoice, invoiceLine, contact, organization } from "@/lib/db/schema";
-import { eq, and, desc, asc, gte, lte, sql } from "drizzle-orm";
+import { invoice, invoiceLine, contact, organization, payment, paymentAllocation } from "@/lib/db/schema";
+import { eq, and, desc, asc, gte, lte, sql, inArray } from "drizzle-orm";
 import { getAuthContext } from "@/lib/api/auth-context";
 import { requireRole } from "@/lib/api/require-role";
 import { handleError } from "@/lib/api/response";
@@ -85,13 +85,44 @@ export async function GET(request: Request) {
       with: { contact: true },
     });
 
+    // Fetch pending payment expected dates for invoices
+    const invoiceIds = invoices.map((inv) => inv.id);
+    let pendingDates: Map<string, string> = new Map();
+    if (invoiceIds.length > 0) {
+      const pendingAllocations = await db
+        .select({
+          documentId: paymentAllocation.documentId,
+          expectedDate: payment.expectedDate,
+        })
+        .from(paymentAllocation)
+        .innerJoin(payment, eq(payment.id, paymentAllocation.paymentId))
+        .where(
+          and(
+            eq(payment.status, "pending"),
+            inArray(paymentAllocation.documentId, invoiceIds)
+          )
+        );
+
+      for (const alloc of pendingAllocations) {
+        if (alloc.expectedDate) {
+          pendingDates.set(alloc.documentId, alloc.expectedDate);
+        }
+      }
+    }
+
+    // Map invoices to include pending payment expected date
+    const enrichedInvoices = invoices.map((inv) => ({
+      ...inv,
+      pendingPaymentExpectedDate: pendingDates.get(inv.id) || null,
+    }));
+
     const [countResult] = await db
       .select({ count: sql<number>`count(*)`.mapWith(Number) })
       .from(invoice)
       .where(and(...conditions));
 
     return NextResponse.json(
-      paginatedResponse(invoices, Number(countResult?.count || 0), page, limit)
+      paginatedResponse(enrichedInvoices, Number(countResult?.count || 0), page, limit)
     );
   } catch (err) {
     return handleError(err);
