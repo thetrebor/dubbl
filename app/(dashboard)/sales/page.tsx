@@ -177,7 +177,6 @@ export default function InvoicesPage() {
   const [payments, setPayments] = useState<PaymentRecord[]>([]);
   const [initialLoad, setInitialLoad] = useState(true);
   const [refetching, setRefetching] = useState(false);
-  const [loadingMore, setLoadingMore] = useState(false);
   const [page, setPage] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
   const [fetchKey, setFetchKey] = useState(0);
@@ -241,41 +240,6 @@ export default function InvoicesPage() {
     return () => { cancelled = true; };
   }, [orgId, buildParams]);
 
-  // Load more
-  const loadMore = useCallback(() => {
-    if (!orgId || loadingMore) return;
-    const nextPage = page + 1;
-    setLoadingMore(true);
-
-    fetch(`/api/v1/invoices?${buildParams(nextPage)}`, {
-      headers: { "x-organization-id": orgId },
-    })
-      .then((r) => r.json())
-      .then((data) => {
-        if (data.data) {
-          setInvoices((prev) => [...prev, ...data.data]);
-          setPage(nextPage);
-        }
-      })
-      .finally(() => setLoadingMore(false));
-  }, [orgId, page, buildParams, loadingMore]);
-
-  const hasMore = invoices.length < totalCount;
-  const sentinelRef = useRef<HTMLDivElement>(null);
-
-  // Infinite scroll
-  useEffect(() => {
-    const el = sentinelRef.current;
-    if (!el) return;
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries[0].isIntersecting && !refetching) loadMore();
-      },
-      { rootMargin: "200px" }
-    );
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, [loadMore, refetching]);
 
   // Fetch summary stats and recent payments (independent of filters)
   useEffect(() => {
@@ -588,20 +552,13 @@ export default function InvoicesPage() {
           </ContentReveal>
         )}
 
-        {/* Infinite scroll sentinel & count */}
+        {/* Invoice count */}
         {!refetching && !pendingSearch && filteredInvoices.length > 0 && (
-          <>
-            <div className="flex items-center justify-between pt-1">
-              <p className="text-xs text-muted-foreground">
-                Showing {invoices.length} of {totalCount} invoice{totalCount !== 1 ? "s" : ""}
-              </p>
-            </div>
-            {hasMore && (
-              <div ref={sentinelRef} className="flex justify-center py-4">
-                {loadingMore && <Loader2 className="size-4 animate-spin text-muted-foreground" />}
-              </div>
-            )}
-          </>
+          <div className="flex items-center justify-between pt-1">
+            <p className="text-xs text-muted-foreground">
+              Showing {invoices.length} of {totalCount} invoice{totalCount !== 1 ? "s" : ""}
+            </p>
+          </div>
         )}
       </div>
     </ContentReveal>
