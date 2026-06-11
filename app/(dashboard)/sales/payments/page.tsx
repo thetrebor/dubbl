@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { useDebounce } from "@/lib/hooks/use-debounce";
 import Link from "next/link";
-import { ArrowLeft, Banknote, Search, X } from "lucide-react";
+import { ArrowLeft, Banknote, CheckCircle, Search, X } from "lucide-react";
 import { DataTable, type Column } from "@/components/dashboard/data-table";
 import { StatCard } from "@/components/dashboard/stat-card";
 import { Badge } from "@/components/ui/badge";
@@ -27,10 +27,14 @@ import { devDelay } from "@/lib/dev-delay";
 interface Payment {
   id: string;
   paymentNumber: string;
+  status: string;
   date: string;
+  expectedDate: string | null;
+  receivedDate: string | null;
   amount: number;
   method: string;
   reference: string | null;
+  notes: string | null;
   contact: { name: string } | null;
   allocations: { documentType: string; documentId: string; amount: number }[];
 }
@@ -51,7 +55,7 @@ const methodColors: Record<string, string> = {
   other: "",
 };
 
-function buildColumns(): Column<Payment>[] {
+function buildColumns(confirmPayment: (id: string) => void, confirming: string | null): Column<Payment>[] {
   return [
     {
       key: "number",
@@ -66,11 +70,44 @@ function buildColumns(): Column<Payment>[] {
       render: (r) => <span className="text-sm font-medium">{r.contact?.name || "-"}</span>,
     },
     {
+      key: "status",
+      header: "Status",
+      className: "w-24",
+      render: (r) => {
+        if (r.status === "pending") {
+          return (
+            <Badge variant="outline" className="border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-300">
+              Pending
+            </Badge>
+          );
+        }
+        return (
+          <Badge variant="outline" className="border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
+            Completed
+          </Badge>
+        );
+      },
+    },
+    {
       key: "date",
       header: "Date",
       sortKey: "date",
       className: "w-28",
-      render: (r) => <span className="text-sm">{r.date}</span>,
+      render: (r) => (
+        <div>
+          <span className="text-sm">{r.date}</span>
+          {r.expectedDate && r.status === "pending" && (
+            <span className="text-xs text-muted-foreground ml-1">
+              (expected {r.expectedDate})
+            </span>
+          )}
+          {r.receivedDate && r.status === "completed" && r.date !== r.receivedDate && (
+            <span className="text-xs text-muted-foreground ml-1">
+              (received {r.receivedDate})
+            </span>
+          )}
+        </div>
+      ),
     },
     {
       key: "method",
@@ -112,12 +149,36 @@ function buildColumns(): Column<Payment>[] {
         );
       },
     },
+    {
+      key: "actions",
+      header: "",
+      className: "w-24 text-right",
+      render: (r) => {
+        if (r.status !== "pending") return null;
+        return (
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-7 text-xs gap-1 border-emerald-200 text-emerald-700 hover:bg-emerald-50 dark:border-emerald-800 dark:text-emerald-300 dark:hover:bg-emerald-950"
+            onClick={(e) => {
+              e.stopPropagation();
+              confirmPayment(r.id);
+            }}
+            disabled={confirming === r.id}
+          >
+            <CheckCircle className="size-3" />
+            {confirming === r.id ? "Confirming..." : "Got it"}
+          </Button>
+        );
+      },
+    },
   ];
 }
 
 export default function PaymentsPage() {
   const [payments, setPayments] = useState<Payment[]>([]);
   const [loading, setLoading] = useState(true);
+  const [confirming, setConfirming] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const debouncedSearch = useDebounce(search);
 
@@ -129,7 +190,28 @@ export default function PaymentsPage() {
   const [sortBy, setSortBy] = useState("date");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
 
-  const columns = useMemo(() => buildColumns(), []);
+  const confirmPayment = useCallback(async (id: string) => {
+    setConfirming(id);
+    try {
+      const orgId = localStorage.getItem("activeOrgId");
+      const res = await fetch(`/api/v1/payments/${id}/confirm`, {
+        method: "POST",
+        headers: { "x-organization-id": orgId || "" },
+      });
+      if (res.ok) {
+        // Refresh payments list
+        const orgId2 = localStorage.getItem("activeOrgId");
+        const data = await fetch(`/api/v1/payments?type=received`, {
+          headers: { "x-organization-id": orgId2 || "" },
+        }).then(r => r.json());
+        if (data.data) setPayments(data.data);
+      }
+    } finally {
+      setConfirming(null);
+    }
+  }, []);
+
+  const columns = useMemo(() => buildColumns(confirmPayment, confirming), [confirmPayment, confirming]);
 
   useEffect(() => {
     const orgId = localStorage.getItem("activeOrgId");

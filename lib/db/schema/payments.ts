@@ -26,6 +26,11 @@ export const paymentMethodEnum = pgEnum("payment_method", [
   "other",
 ]);
 
+export const paymentStatusEnum = pgEnum("payment_status", [
+  "pending",
+  "completed",
+]);
+
 // Payment record
 export const payment = pgTable("payment", {
   id: uuid("id")
@@ -39,7 +44,10 @@ export const payment = pgTable("payment", {
     .references(() => contact.id),
   paymentNumber: text("payment_number").notNull(),
   type: paymentTypeEnum("type").notNull(),
+  status: paymentStatusEnum("status").notNull().default("completed"),
   date: date("date").notNull(),
+  expectedDate: date("expected_date"),
+  receivedDate: date("received_date"),
   amount: integer("amount").notNull().default(0), // total payment in cents
   method: paymentMethodEnum("method").notNull().default("bank_transfer"),
   reference: text("reference"), // check number, transfer ref, etc.

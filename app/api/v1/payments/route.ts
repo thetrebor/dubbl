@@ -22,7 +22,9 @@ const allocationSchema = z.object({
 const createSchema = z.object({
   contactId: z.string().min(1),
   type: z.enum(["received", "made"]),
+  status: z.enum(["pending", "completed"]).default("completed"),
   date: z.string().min(1),
+  expectedDate: z.string().nullable().optional(),
   amount: z.number().int().positive(),
   method: z.enum(["bank_transfer", "cash", "check", "card", "other"]).default("bank_transfer"),
   reference: z.string().nullable().optional(),
@@ -50,6 +52,11 @@ export async function GET(request: Request) {
 
     if (contactId) {
       conditions.push(eq(payment.contactId, contactId));
+    }
+
+    const status = url.searchParams.get("status");
+    if (status) {
+      conditions.push(eq(payment.status, status as "pending" | "completed"));
     }
 
     const payments = await db.query.payment.findMany({
@@ -103,7 +110,9 @@ export async function POST(request: Request) {
         contactId: parsed.contactId,
         paymentNumber,
         type: parsed.type,
+        status: parsed.status,
         date: parsed.date,
+        expectedDate: parsed.status === "pending" ? (parsed.expectedDate || null) : null,
         amount: parsed.amount,
         method: parsed.method,
         reference: parsed.reference || null,
@@ -123,7 +132,19 @@ export async function POST(request: Request) {
       }))
     );
 
-    // Update allocated documents
+    // If pending, skip invoice updates and journal entries — just record the expected payment
+    if (parsed.status === "pending") {
+      const result = await db.query.payment.findFirst({
+        where: eq(payment.id, created.id),
+        with: { contact: true, allocations: true },
+      });
+
+      logAudit({ ctx, action: "create", entityType: "payment", entityId: created.id, request });
+
+      return NextResponse.json({ payment: result }, { status: 201 });
+    }
+
+    // Update allocated documents (only for completed payments)
     for (const alloc of parsed.allocations) {
       if (alloc.documentType === "invoice") {
         const existing = await db.query.invoice.findFirst({
