@@ -138,6 +138,7 @@ export default function InvoiceDetailPage() {
   const [payBankAccountId, setPayBankAccountId] = useState<string>("");
   const [payIsPending, setPayIsPending] = useState(false);
   const [payExpectedDate, setPayExpectedDate] = useState("");
+  const [confirmingPayment, setConfirmingPayment] = useState<string | null>(null);
   const [bankAccounts, setBankAccounts] = useState<{ id: string; name: string }[]>([]);
   const [duplicating, setDuplicating] = useState(false);
   const [complianceWarnings, setComplianceWarnings] = useState<{ field: string; message: string; severity: "error" | "warning" }[]>([]);
@@ -342,6 +343,33 @@ export default function InvoiceDetailPage() {
       }
     } finally {
       setPayLoading(false);
+    }
+  }
+
+  async function handleConfirmPendingPayment(paymentId: string) {
+    if (!orgId) return;
+    setConfirmingPayment(paymentId);
+    try {
+      const res = await fetch(`/api/v1/payments/${paymentId}/confirm`, {
+        method: "POST",
+        headers: { "x-organization-id": orgId },
+      });
+      if (res.ok) {
+        // Refresh the invoice data to reflect updated amounts
+        const invRes = await fetch(`/api/v1/invoices/${id}`, {
+          headers: { "x-organization-id": orgId },
+        });
+        if (invRes.ok) {
+          const data = await invRes.json();
+          setInv((prev) => prev ? { ...prev, ...data.invoice } : prev);
+          if (data.payments) setPayments(data.payments);
+        }
+        toast.success("Payment confirmed");
+      } else {
+        toast.error("Failed to confirm payment");
+      }
+    } finally {
+      setConfirmingPayment(null);
     }
   }
 
@@ -864,7 +892,20 @@ export default function InvoiceDetailPage() {
                       </p>
                     </div>
                   </div>
-                  <span className="text-sm font-mono font-semibold text-emerald-600 shrink-0">{formatMoney(p.amount)}</span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-mono font-semibold text-emerald-600 shrink-0">{formatMoney(p.amount)}</span>
+                    {p.status === "pending" && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-7 text-xs border-amber-200 text-amber-700 hover:bg-amber-50 dark:border-amber-800 dark:text-amber-300"
+                        onClick={() => handleConfirmPendingPayment(p.id)}
+                        disabled={confirmingPayment === p.id}
+                      >
+                        {confirmingPayment === p.id ? "Confirming..." : "Got it"}
+                      </Button>
+                    )}
+                  </div>
                 </div>
               ))}
             </div>
