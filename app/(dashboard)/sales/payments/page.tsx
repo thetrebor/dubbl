@@ -105,7 +105,7 @@ function buildColumns(confirmPayment: (id: string) => void, confirming: string |
             <div className="text-xs text-emerald-600">
               received {r.receivedDate}
             </div>
-          )}}
+          )}
         </div>
       ),
     },
