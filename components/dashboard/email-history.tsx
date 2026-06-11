@@ -36,7 +36,7 @@ export function EmailHistory({ documentType, documentId }: EmailHistoryProps) {
   const [emails, setEmails] = useState<EmailLogEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [resendingId, setResendingId] = useState<string | null>(null);
-  const [forwardingId, setForwardingId] = useState<string | null>(null);
+  const [forwarding, setForwarding] = useState(false);
   const [forwardEmail, setForwardEmail] = useState("");
 
   const orgId = typeof window !== "undefined" ? localStorage.getItem("activeOrgId") : null;
@@ -77,14 +77,15 @@ export function EmailHistory({ documentType, documentId }: EmailHistoryProps) {
     }
   }
 
-  async function handleForward(emailId: string) {
-    if (!orgId || !forwardEmail) {
-      toast.error("Enter an email address to forward to");
+  async function handleForward() {
+    if (!orgId || !forwardEmail || emails.length === 0) {
+      if (!forwardEmail) toast.error("Enter an email address to forward to");
       return;
     }
-    setForwardingId(emailId);
+    const latestEmail = emails[0];
+    setForwarding(true);
     try {
-      const res = await fetch(`/api/v1/document-emails/${emailId}/resend`, {
+      const res = await fetch(`/api/v1/document-emails/${latestEmail.id}/resend`, {
         method: "POST",
         headers: { "Content-Type": "application/json", "x-organization-id": orgId },
         body: JSON.stringify({ recipientEmail: forwardEmail }),
@@ -98,13 +99,13 @@ export function EmailHistory({ documentType, documentId }: EmailHistoryProps) {
         toast.error(typeof data.error === "string" ? data.error : "Failed to forward");
       }
     } finally {
-      setForwardingId(null);
+      setForwarding(false);
     }
   }
 
-  function handleKeyDown(e: React.KeyboardEvent, emailId: string) {
+  function handleForwardKeyDown(e: React.KeyboardEvent) {
     if (e.key === "Enter" && forwardEmail) {
-      handleForward(emailId);
+      handleForward();
     }
   }
 
@@ -118,6 +119,31 @@ export function EmailHistory({ documentType, documentId }: EmailHistoryProps) {
           Email History
         </p>
       </div>
+
+      {/* Single forward row at the top */}
+      <div className="flex items-center gap-2 px-5 py-3 border-b bg-muted/10">
+        <Forward className="size-3.5 text-muted-foreground shrink-0" />
+        <Input
+          type="email"
+          placeholder="Forward a copy to..."
+          className="h-7 text-xs flex-1"
+          value={forwardEmail}
+          onChange={(e) => setForwardEmail(e.target.value)}
+          onKeyDown={handleForwardKeyDown}
+        />
+        <Button
+          variant="secondary"
+          size="sm"
+          className="h-7 text-xs shrink-0"
+          onClick={handleForward}
+          disabled={forwarding || !forwardEmail}
+        >
+          <Forward className={`size-3 mr-1 ${forwarding ? "animate-spin" : ""}`} />
+          Send Copy
+        </Button>
+      </div>
+
+      {/* Email history list */}
       <div className="divide-y">
         {emails.map((email) => (
           <div key={email.id} className="flex items-center justify-between px-5 py-3 gap-3">
@@ -140,39 +166,15 @@ export function EmailHistory({ documentType, documentId }: EmailHistoryProps) {
                 <span className="text-xs text-muted-foreground shrink-0">{timeAgo(email.sentAt)}</span>
               </div>
             </div>
-            <div className="flex items-center gap-1 shrink-0">
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-7 text-xs gap-1"
-                onClick={() => handleResend(email.id)}
-                disabled={resendingId === email.id}
-              >
-                <RotateCw className={`size-3 ${resendingId === email.id ? "animate-spin" : ""}`} />
-                Resend
-              </Button>
-            </div>
-          </div>
-          {/* Forward row */}
-          <div className="flex items-center gap-2 px-5 pb-3 pt-0">
-            <Forward className="size-3 text-muted-foreground shrink-0" />
-            <Input
-              type="email"
-              placeholder="forward to..."
-              className="h-7 text-xs"
-              value={forwardEmail}
-              onChange={(e) => setForwardEmail(e.target.value)}
-              onKeyDown={(e) => handleKeyDown(e, email.id)}
-            />
             <Button
-              variant="secondary"
+              variant="ghost"
               size="sm"
-              className="h-7 text-xs shrink-0"
-              onClick={() => handleForward(email.id)}
-              disabled={forwardingId === email.id || !forwardEmail}
+              className="shrink-0 h-7 text-xs gap-1"
+              onClick={() => handleResend(email.id)}
+              disabled={resendingId === email.id}
             >
-              <Forward className={`size-3 mr-1 ${forwardingId === email.id ? "animate-spin" : ""}`} />
-              Send Copy
+              <RotateCw className={`size-3 ${resendingId === email.id ? "animate-spin" : ""}`} />
+              Resend
             </Button>
           </div>
         ))}
