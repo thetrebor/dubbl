@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { invoice, invoiceLine, contact, organization, payment, paymentAllocation } from "@/lib/db/schema";
-import { eq, and, desc, asc, gte, lte, sql, inArray } from "drizzle-orm";
+import { eq, and, desc, asc, gte, lte, sql, inArray, ne } from "drizzle-orm";
 import { getAuthContext } from "@/lib/api/auth-context";
 import { requireRole } from "@/lib/api/require-role";
 import { handleError } from "@/lib/api/response";
@@ -50,6 +50,7 @@ export async function GET(request: Request) {
     const url = new URL(request.url);
     const { page, limit, offset } = parsePagination(url);
     const status = url.searchParams.get("status");
+    const excludeStatus = url.searchParams.get("excludeStatus");
     const contactId = url.searchParams.get("contactId");
     const from = url.searchParams.get("from");
     const to = url.searchParams.get("to");
@@ -63,6 +64,9 @@ export async function GET(request: Request) {
 
     if (status) {
       conditions.push(eq(invoice.status, status as typeof invoice.status.enumValues[number]));
+    }
+    if (excludeStatus) {
+      conditions.push(ne(invoice.status, excludeStatus as typeof invoice.status.enumValues[number]));
     }
     if (contactId) {
       conditions.push(eq(invoice.contactId, contactId));

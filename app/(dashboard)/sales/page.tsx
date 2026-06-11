@@ -187,7 +187,7 @@ export default function InvoicesPage() {
     overdue: number;
     aging: Record<string, { count: number; amount: number }>;
   } | null>(null);
-  const [statusFilter, setStatusFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState("recent");
   const [sortBy, setSortBy] = useState("created");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
   const [search, setSearch] = useState("");
@@ -203,7 +203,11 @@ export default function InvoicesPage() {
 
   const buildParams = useCallback((p: number) => {
     const params = new URLSearchParams();
-    if (statusFilter !== "all") params.set("status", statusFilter);
+    if (statusFilter === "recent") {
+      params.set("excludeStatus", "void");
+    } else if (statusFilter !== "all") {
+      params.set("status", statusFilter);
+    }
     if (sortBy !== "created") params.set("sortBy", sortBy);
     if (sortOrder !== "desc") params.set("sortOrder", sortOrder);
     if (dateFrom) params.set("from", dateFrom);
@@ -483,6 +487,7 @@ export default function InvoicesPage() {
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <Tabs value={statusFilter} onValueChange={setStatusFilter}>
             <TabsList className="overflow-x-auto">
+              <TabsTrigger value="recent" className="whitespace-nowrap">Recent</TabsTrigger>
               <TabsTrigger value="all" className="whitespace-nowrap">All</TabsTrigger>
               <TabsTrigger value="draft" className="whitespace-nowrap">Draft</TabsTrigger>
               <TabsTrigger value="sent" className="whitespace-nowrap">Sent</TabsTrigger>
