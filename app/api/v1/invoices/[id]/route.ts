@@ -49,6 +49,9 @@ export async function GET(
         date: a.payment.date,
         amount: a.amount,
         method: a.payment.method,
+        status: a.payment.status,
+        expectedDate: a.payment.expectedDate,
+        receivedDate: a.payment.receivedDate,
       }));
 
     return NextResponse.json({ invoice: found, payments });

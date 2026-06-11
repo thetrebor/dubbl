@@ -97,15 +97,15 @@ function buildColumns(confirmPayment: (id: string) => void, confirming: string |
         <div>
           <span className="text-sm">{r.date}</span>
           {r.expectedDate && r.status === "pending" && (
-            <span className="text-xs text-muted-foreground ml-1">
-              (expected {r.expectedDate})
-            </span>
+            <div className="text-xs text-amber-600">
+              expected {r.expectedDate}
+            </div>
           )}
           {r.receivedDate && r.status === "completed" && r.date !== r.receivedDate && (
-            <span className="text-xs text-muted-foreground ml-1">
-              (received {r.receivedDate})
-            </span>
-          )}
+            <div className="text-xs text-emerald-600">
+              received {r.receivedDate}
+            </div>
+          )}}
         </div>
       ),
     },

@@ -104,6 +104,9 @@ interface PaymentRecord {
   date: string;
   amount: number;
   method: string;
+  status: string;
+  expectedDate: string | null;
+  receivedDate: string | null;
 }
 
 function formatDate(dateStr: string) {
@@ -651,6 +654,21 @@ export default function InvoiceDetailPage() {
                 <p className="text-sm font-mono font-semibold tabular-nums text-amber-600 mt-0.5">{formatMoney(inv.amountDue)}</p>
               </div>
             </div>
+            {/* Pending payment info */}
+            {payments.some(p => p.status === "pending") && (
+              <div className="mt-3 pt-3 border-t text-xs text-muted-foreground">
+                {payments.filter(p => p.status === "pending").map(p => (
+                  <div key={p.id} className="flex items-center justify-between">
+                    <span>
+                      🟡 {p.paymentNumber} · {formatMoney(p.amount)} pending
+                    </span>
+                    {p.expectedDate && (
+                      <span>expected {formatDate(p.expectedDate)}</span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Notes / Reference */}
@@ -795,8 +813,26 @@ export default function InvoiceDetailPage() {
                       <div className="flex items-center gap-2">
                         <span className="text-sm font-mono font-medium">{p.paymentNumber}</span>
                         <Badge variant="outline" className="text-[10px] px-1.5 py-0">{methodLabels[p.method] || p.method}</Badge>
+                        {p.status === "pending" && (
+                          <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-300">
+                            Pending
+                          </Badge>
+                        )}
+                        {p.status === "completed" && (
+                          <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
+                            Completed
+                          </Badge>
+                        )}
                       </div>
-                      <p className="text-xs text-muted-foreground mt-0.5">{formatDate(p.date)}</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        {formatDate(p.date)}
+                        {p.status === "pending" && p.expectedDate && (
+                          <span className="ml-1">· expected {formatDate(p.expectedDate)}</span>
+                        )}
+                        {p.status === "completed" && p.receivedDate && p.date !== p.receivedDate && (
+                          <span className="ml-1">· received {formatDate(p.receivedDate)}</span>
+                        )}
+                      </p>
                     </div>
                   </div>
                   <span className="text-sm font-mono font-semibold text-emerald-600 shrink-0">{formatMoney(p.amount)}</span>
