@@ -16,6 +16,8 @@ const paySchema = z.object({
   method: z.enum(["bank_transfer", "cash", "check", "card", "other"]).default("bank_transfer"),
   reference: z.string().nullable().optional(),
   bankAccountId: z.string().uuid().nullable().optional(),
+  status: z.enum(["pending", "completed"]).default("completed"),
+  expectedDate: z.string().nullable().optional(),
 });
 
 export async function POST(
@@ -60,6 +62,8 @@ export async function POST(
         contactId: found.contactId,
         paymentNumber,
         type: "received",
+        status: parsed.status,
+        expectedDate: parsed.status === "pending" ? (parsed.expectedDate || null) : null,
         date: parsed.date,
         amount: parsed.amount,
         method: parsed.method,
@@ -77,38 +81,45 @@ export async function POST(
       amount: parsed.amount,
     });
 
-    // Create payment journal entry
-    const journalEntry = await createPaymentJournalEntry(
-      { organizationId: ctx.organizationId, userId: ctx.userId },
-      {
-        type: "invoice",
-        reference: paymentNumber,
-        amount: parsed.amount,
-        date: parsed.date,
-      }
-    );
+    let updated;
 
-    if (journalEntry) {
-      await db
-        .update(payment)
-        .set({ journalEntryId: journalEntry.id })
-        .where(eq(payment.id, created.id));
+    if (parsed.status === "pending") {
+      // Pending: don't update invoice amounts or create journal entry
+      updated = found;
+    } else {
+      // Completed: create journal entry and update invoice
+      const journalEntry = await createPaymentJournalEntry(
+        { organizationId: ctx.organizationId, userId: ctx.userId },
+        {
+          type: "invoice",
+          reference: paymentNumber,
+          amount: parsed.amount,
+          date: parsed.date,
+        }
+      );
+
+      if (journalEntry) {
+        await db
+          .update(payment)
+          .set({ journalEntryId: journalEntry.id })
+          .where(eq(payment.id, created.id));
+      }
+
+      // Update invoice amounts
+      [updated] = await db
+        .update(invoice)
+        .set({
+          amountPaid: newAmountPaid,
+          amountDue: Math.max(0, newAmountDue),
+          status: newStatus,
+          paidAt: newStatus === "paid" ? new Date() : null,
+          updatedAt: new Date(),
+        })
+        .where(eq(invoice.id, id))
+        .returning();
     }
 
-    // Update invoice amounts
-    const [updated] = await db
-      .update(invoice)
-      .set({
-        amountPaid: newAmountPaid,
-        amountDue: Math.max(0, newAmountDue),
-        status: newStatus,
-        paidAt: newStatus === "paid" ? new Date() : null,
-        updatedAt: new Date(),
-      })
-      .where(eq(invoice.id, id))
-      .returning();
-
-    logAudit({ ctx, action: "pay", entityType: "invoice", entityId: id, changes: { previousStatus: found.status }, request });
+    logAudit({ ctx, action: "pay", entityType: "invoice", entityId: id, changes: { previousStatus: found.status, paymentStatus: parsed.status }, request });
 
     return NextResponse.json({
       invoice: updated,
@@ -118,6 +129,9 @@ export async function POST(
         date: created.date,
         amount: parsed.amount,
         method: created.method,
+        status: created.status,
+        expectedDate: created.expectedDate,
+        receivedDate: created.receivedDate,
       },
     });
   } catch (err) {

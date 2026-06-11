@@ -136,6 +136,8 @@ export default function InvoiceDetailPage() {
   const [payOpen, setPayOpen] = useState(false);
   const [payLoading, setPayLoading] = useState(false);
   const [payBankAccountId, setPayBankAccountId] = useState<string>("");
+  const [payIsPending, setPayIsPending] = useState(false);
+  const [payExpectedDate, setPayExpectedDate] = useState("");
   const [bankAccounts, setBankAccounts] = useState<{ id: string; name: string }[]>([]);
   const [duplicating, setDuplicating] = useState(false);
   const [complianceWarnings, setComplianceWarnings] = useState<{ field: string; message: string; severity: "error" | "warning" }[]>([]);
@@ -314,7 +316,14 @@ export default function InvoiceDetailPage() {
           "Content-Type": "application/json",
           "x-organization-id": orgId,
         },
-        body: JSON.stringify({ amount, date: payDate, method: payMethod, bankAccountId: payBankAccountId || null }),
+        body: JSON.stringify({
+          amount,
+          date: payDate,
+          method: payMethod,
+          bankAccountId: payBankAccountId || null,
+          status: payIsPending ? "pending" : "completed",
+          expectedDate: payIsPending ? (payExpectedDate || null) : null,
+        }),
       });
 
       if (res.ok) {
@@ -325,7 +334,9 @@ export default function InvoiceDetailPage() {
         }
         setPayOpen(false);
         setPayAmount("");
-        toast.success("Payment recorded");
+        setPayIsPending(false);
+        setPayExpectedDate("");
+        toast.success(payIsPending ? "Pending payment recorded" : "Payment recorded");
       } else {
         toast.error("Failed to record payment");
       }
@@ -481,8 +492,26 @@ export default function InvoiceDetailPage() {
                         </Select>
                       </div>
                     )}
+                    <div className="flex items-center gap-2 pt-2">
+                      <input
+                        type="checkbox"
+                        id="pay-pending"
+                        checked={payIsPending}
+                        onChange={(e) => setPayIsPending(e.target.checked)}
+                        className="h-4 w-4 rounded border-gray-300 text-amber-500 focus:ring-amber-500"
+                      />
+                      <Label htmlFor="pay-pending" className="text-sm font-normal text-muted-foreground cursor-pointer">
+                        Mark as pending (payment notification received, funds not yet arrived)
+                      </Label>
+                    </div>
+                    {payIsPending && (
+                      <div className="space-y-2 pl-6">
+                        <Label>Expected date</Label>
+                        <DatePicker value={payExpectedDate} onChange={setPayExpectedDate} placeholder="When funds will arrive" />
+                      </div>
+                    )}
                     <Button onClick={handlePay} loading={payLoading} className="w-full bg-emerald-600 hover:bg-emerald-700">
-                      Record Payment
+                      {payIsPending ? "Record Pending Payment" : "Record Payment"}
                     </Button>
                   </div>
                 </DialogContent>
