@@ -73,12 +73,34 @@ export async function POST(
       }
     }
 
+    // Use current contact email if available, otherwise fall back to the log entry email
+    let recipientEmail = logEntry.recipientEmail;
+
+    // Check if a custom recipient was provided (forward feature)
+    const body = await request.json().catch(() => ({}));
+    if (body.recipientEmail) {
+      recipientEmail = body.recipientEmail;
+    } else if (logEntry.documentType === "invoice") {
+      try {
+        const { invoice: invoiceSchema } = await import("@/lib/db/schema");
+        const inv = await db.query.invoice.findFirst({
+          where: eq(invoiceSchema.id, logEntry.documentId),
+          with: { contact: true },
+        });
+        if (inv?.contact?.email) {
+          recipientEmail = inv.contact.email;
+        }
+      } catch {
+        // Fall back to log entry email
+      }
+    }
+
     const result = await sendDocumentEmail({
       orgId: ctx.organizationId,
       userId: ctx.userId,
       documentType: logEntry.documentType,
       documentId: logEntry.documentId,
-      recipientEmail: logEntry.recipientEmail,
+      recipientEmail,
       subject: logEntry.subject,
       body: logEntry.body,
       attachPdf: logEntry.attachPdf,
@@ -86,6 +108,12 @@ export async function POST(
       pdfFilename,
       replyTo: org?.contactEmail || undefined,
     });
+
+    // Update the log entry's recipient email to reflect the new address
+    await db
+      .update(documentEmailLog)
+      .set({ recipientEmail })
+      .where(eq(documentEmailLog.id, id));
 
     return NextResponse.json({ emailLog: result });
   } catch (err) {
