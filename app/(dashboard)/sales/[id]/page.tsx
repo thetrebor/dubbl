@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { ArrowLeft, Send, DollarSign, Ban, Copy, Clock, Mail, Banknote, Download, AlertTriangle, X, Pencil, Loader2 } from "lucide-react";
+import { ArrowLeft, Send, DollarSign, Ban, Copy, Clock, Mail, Banknote, Download, AlertTriangle, X, Pencil, Loader2, Save } from "lucide-react";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -39,6 +39,7 @@ import { useEntityTitle } from "@/lib/hooks/use-entity-title";
 import { ContentReveal } from "@/components/ui/content-reveal";
 import { SendDocumentDialog } from "@/components/dashboard/send-document-dialog";
 import { EmailHistory } from "@/components/dashboard/email-history";
+import { LineItemsEditor, type LineItem } from "@/components/dashboard/line-items-editor";
 import Link from "next/link";
 
 interface InvoiceDetail {
@@ -157,6 +158,15 @@ export default function InvoiceDetailPage() {
   const [recipientTaxNumber, setRecipientTaxNumber] = useState("");
   const [senderSnapshot, setSenderSnapshot] = useState<Record<string, string | null> | null>(null);
   const [recipientSnapshot, setRecipientSnapshot] = useState<Record<string, string | null> | null>(null);
+
+  // Draft edit state
+  const [editSheetOpen, setEditSheetOpen] = useState(false);
+  const [editSaving, setEditSaving] = useState(false);
+  const [editIssueDate, setEditIssueDate] = useState("");
+  const [editDueDate, setEditDueDate] = useState("");
+  const [editReference, setEditReference] = useState("");
+  const [editNotes, setEditNotes] = useState("");
+  const [editLines, setEditLines] = useState<LineItem[]>([]);
   const [sendDialogOpen, setSendDialogOpen] = useState(false);
   const [emailHistoryKey, setEmailHistoryKey] = useState(0);
   const [orgName, setOrgName] = useState("");
@@ -212,6 +222,63 @@ export default function InvoiceDetailPage() {
       })
       .catch(() => {});
   }, [orgId, payOpen]);
+
+  function openEditSheet() {
+    if (!inv) return;
+    setEditIssueDate(inv.issueDate);
+    setEditDueDate(inv.dueDate || "");
+    setEditReference(inv.reference || "");
+    setEditNotes(inv.notes || "");
+    setEditLines(
+      inv.lines.map((l) => ({
+        description: l.description,
+        quantity: String(l.quantity / 100),
+        unitPrice: String(l.unitPrice / 100),
+        accountId: l.account?.id || "",
+        taxRateId: "",
+      }))
+    );
+    setEditSheetOpen(true);
+  }
+
+  async function handleSaveEdit() {
+    if (!inv) return;
+    setEditSaving(true);
+    try {
+      const lines = editLines.map((l) => ({
+        description: l.description,
+        quantity: parseFloat(l.quantity) || 0,
+        unitPrice: parseFloat(l.unitPrice) || 0,
+        accountId: l.accountId || null,
+      }));
+      const res = await fetch(`/api/v1/invoices/${inv.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          issueDate: editIssueDate,
+          dueDate: editDueDate || null,
+          reference: editReference || null,
+          notes: editNotes || null,
+          lines,
+        }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: "Unknown error" }));
+        throw new Error(err.error || "Failed to save");
+      }
+      toast.success("Invoice updated");
+      setEditSheetOpen(false);
+      // Refetch
+      const data = await res.json();
+      setInv((prev) => prev ? { ...prev, ...data.invoice } : prev);
+      // Full reload to get fresh data
+      window.location.reload();
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Failed to save");
+    } finally {
+      setEditSaving(false);
+    }
+  }
 
   function openSnapshotEdit() {
     setSenderName(senderSnapshot?.name || "");
