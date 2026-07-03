@@ -7,3 +7,8 @@ logs/
 .env.production
 .pnpm-store/
 node_modules/
+
+# Build artifacts
+.sandcastle/
+tsconfig.tsbuildinfo
+.pi-loop.json.lock
