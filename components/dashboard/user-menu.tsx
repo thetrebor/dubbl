@@ -2,11 +2,9 @@
 
 import { useState } from "react";
 import { useSession, signOut } from "next-auth/react";
-import { useRouter } from "next/navigation";
 import {
   LogOut,
   ChevronsUpDown,
-  Sparkles,
   User,
 } from "lucide-react";
 import {
@@ -26,7 +24,6 @@ export function UserMenu() {
   const user = session?.user;
   const [accountOpen, setAccountOpen] = useState(false);
   const isMobile = useIsMobile();
-  const router = useRouter();
 
   const initials = user?.name
     ? user.name
@@ -92,13 +89,6 @@ export function UserMenu() {
             >
               <User className="size-4 text-muted-foreground" />
               Account
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={() => router.push("/settings/billing")}
-              className="gap-2.5 rounded-lg px-2.5 py-2 text-[13px]"
-            >
-              <Sparkles className="size-4 text-emerald-600 dark:text-emerald-400" />
-              Upgrade to Pro
             </DropdownMenuItem>
           </div>
 

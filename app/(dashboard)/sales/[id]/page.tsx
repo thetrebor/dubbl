@@ -64,6 +64,7 @@ interface InvoiceDetail {
     unitPrice: number;
     amount: number;
     account: { code: string; name: string; id: string } | null;
+    taxRate: { id: string } | null;
   }[];
 }
 
@@ -235,14 +236,14 @@ export default function InvoiceDetailPage() {
         quantity: String(l.quantity / 100),
         unitPrice: String(l.unitPrice / 100),
         accountId: l.account?.id || "",
-        taxRateId: "",
+        taxRateId: l.taxRate?.id || "",
       }))
     );
     setEditSheetOpen(true);
   }
 
   async function handleSaveEdit() {
-    if (!inv) return;
+    if (!inv || !orgId) return;
     setEditSaving(true);
     try {
       const lines = editLines.map((l) => ({
@@ -250,13 +251,14 @@ export default function InvoiceDetailPage() {
         quantity: parseFloat(l.quantity) || 0,
         unitPrice: parseFloat(l.unitPrice) || 0,
         accountId: l.accountId || null,
+        taxRateId: l.taxRateId || null,
       }));
       const res = await fetch(`/api/v1/invoices/${inv.id}`, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "x-organization-id": orgId },
         body: JSON.stringify({
           issueDate: editIssueDate,
-          dueDate: editDueDate || null,
+          dueDate: editDueDate,
           reference: editReference || null,
           notes: editNotes || null,
           lines,
@@ -532,6 +534,11 @@ export default function InvoiceDetailPage() {
                 <Send className="mr-2 size-4" />Send
               </Button>
             )}
+            {inv.status === "draft" && (
+              <Button variant="outline" size="sm" onClick={openEditSheet}>
+                <Pencil className="mr-2 size-4" />Edit
+              </Button>
+            )}
             {["sent", "partial", "overdue"].includes(inv.status) && (
               <Dialog open={payOpen} onOpenChange={setPayOpen}>
                 <DialogTrigger asChild>
@@ -626,6 +633,50 @@ export default function InvoiceDetailPage() {
           </div>
         </div>
 
+        {/* Draft Edit Sheet */}
+        <Sheet open={editSheetOpen} onOpenChange={setEditSheetOpen}>
+          <SheetContent side="right" className="sm:max-w-2xl w-full overflow-y-auto">
+            <SheetHeader>
+              <SheetTitle>Edit Draft Invoice</SheetTitle>
+            </SheetHeader>
+            <div className="flex-1 space-y-5 px-4 pb-4">
+              <div className="grid gap-4 sm:grid-cols-2 pt-2">
+                <div className="space-y-2">
+                  <Label>Issue Date</Label>
+                  <DatePicker value={editIssueDate} onChange={setEditIssueDate} placeholder="Issue date" />
+                </div>
+                <div className="space-y-2">
+                  <Label>Due Date</Label>
+                  <DatePicker value={editDueDate} onChange={setEditDueDate} placeholder="Due date" />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label>Reference</Label>
+                <Input value={editReference} onChange={(e) => setEditReference(e.target.value)} placeholder="PO number, project, or note" />
+              </div>
+              <div className="space-y-3">
+                <Label>Line Items</Label>
+                <LineItemsEditor lines={editLines} onChange={setEditLines} accountTypeFilter={["revenue"]} />
+              </div>
+              <div className="space-y-2">
+                <Label>Notes</Label>
+                <Textarea value={editNotes} onChange={(e) => setEditNotes(e.target.value)} placeholder="Notes to customer..." rows={3} />
+              </div>
+            </div>
+            <SheetFooter>
+              <Button variant="outline" onClick={() => setEditSheetOpen(false)}>Cancel</Button>
+              <Button
+                onClick={handleSaveEdit}
+                disabled={editSaving || !editIssueDate || !editDueDate || editLines.length === 0}
+                className="bg-emerald-600 hover:bg-emerald-700"
+              >
+                {editSaving ? <Loader2 className="mr-2 size-4 animate-spin" /> : <Save className="mr-2 size-4" />}
+                Save
+              </Button>
+            </SheetFooter>
+          </SheetContent>
+        </Sheet>
+
         {/* Compliance warnings */}
         {complianceWarnings.length > 0 && !complianceDismissed && (
           <div className="rounded-lg border border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/40 p-4">
@@ -716,7 +767,7 @@ export default function InvoiceDetailPage() {
                         <p className="text-xs text-muted-foreground mt-0.5">{line.account.code} · {line.account.name}</p>
                       )}
                     </td>
-                    <td className="px-4 py-3 text-right font-mono tabular-nums">{(line.quantity / 100).toFixed(0)}</td>
+                    <td className="px-4 py-3 text-right font-mono tabular-nums">{(line.quantity / 100).toFixed(2)}</td>
                     <td className="px-4 py-3 text-right font-mono tabular-nums text-muted-foreground">{formatMoney(line.unitPrice)}</td>
                     <td className="px-6 py-3 text-right font-mono tabular-nums font-medium">{formatMoney(line.amount)}</td>
                   </tr>

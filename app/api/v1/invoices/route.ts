@@ -91,7 +91,7 @@ export async function GET(request: Request) {
 
     // Fetch pending payment expected dates for invoices
     const invoiceIds = invoices.map((inv) => inv.id);
-    let pendingDates: Map<string, string> = new Map();
+    const pendingDates: Map<string, string> = new Map();
     if (invoiceIds.length > 0) {
       const pendingAllocations = await db
         .select({
