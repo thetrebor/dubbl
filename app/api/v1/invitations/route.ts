@@ -169,7 +169,7 @@ export async function POST(request: Request) {
       where: eq(organization.id, ctx.organizationId),
     });
     if (inviter && org) {
-      const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://dubbl.dev";
+      const appUrl = process.env.NEXT_PUBLIC_APP_URL!;
       const acceptUrl = `${appUrl}/invite/${token}`;
       render(
         createElement(MemberInviteEmail, {

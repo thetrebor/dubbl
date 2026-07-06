@@ -182,7 +182,7 @@ export async function POST(request: Request) {
       where: eq(users.id, session.user!.id!),
     });
     if (user) {
-      const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://app.dubbl.dev";
+      const appUrl = process.env.NEXT_PUBLIC_APP_URL!;
       render(createElement(OrgCreatedEmail, { userName: user.name || "there", orgName: parsed.name, dashboardUrl: `${appUrl}/dashboard` }))
         .then((html) => sendPlatformEmail({ to: user.email, subject: `${parsed.name} is ready`, html }))
         .catch(() => {});

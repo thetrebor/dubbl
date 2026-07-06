@@ -11,7 +11,7 @@ const CORS_HEADERS: Record<string, string> = {
 
 async function handleMcpRequest(req: Request): Promise<Response> {
   // Extract Bearer token
-  const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+  const APP_URL = process.env.NEXT_PUBLIC_APP_URL!;
   const authHeader = req.headers.get("authorization");
   if (!authHeader?.startsWith("Bearer mcp_at_")) {
     return new Response(

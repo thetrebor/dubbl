@@ -101,7 +101,7 @@ export async function processDigests() {
           body: n.body,
           createdAt: formatTime(n.createdAt),
         })),
-        dashboardUrl: `${process.env.NEXT_PUBLIC_APP_URL || "https://app.dubbl.dev"}/notifications`,
+        dashboardUrl: `${process.env.NEXT_PUBLIC_APP_URL!}/notifications`,
       });
 
       const html = await render(element);

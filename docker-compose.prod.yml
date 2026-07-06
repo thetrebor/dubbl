@@ -1,6 +1,9 @@
 services:
   web:
-    build: .
+    build:
+      context: .
+      args:
+        NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:?Set NEXT_PUBLIC_APP_URL in .env.production}
     ports:
       - "3456:3000"
     depends_on:
@@ -10,7 +13,7 @@ services:
     environment:
       DATABASE_URL: ${DATABASE_URL:-postgresql://dubbl:dubbl@postgres:5432/dubbl}
       AUTH_SECRET: ${AUTH_SECRET:?Set AUTH_SECRET in .env.production}
-      AUTH_URL: ${AUTH_URL:-http://localhost:3456}
+      AUTH_URL: ${AUTH_URL:-https://invoice.robertmaefs.com}
       NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:?Set NEXT_PUBLIC_APP_URL in .env.production}
 
       AUTH_GOOGLE_ID: ${AUTH_GOOGLE_ID:-}

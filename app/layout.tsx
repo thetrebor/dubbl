@@ -22,7 +22,7 @@ const playfairDisplay = Playfair_Display({
   subsets: ["latin"],
 });
 
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "https://dubbl.dev";
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL!;
 
 export const metadata: Metadata = {
   title: {

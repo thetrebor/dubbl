@@ -20,9 +20,12 @@ COPY . .
 # Next.js collects telemetry by default - disable it
 ENV NEXT_TELEMETRY_DISABLED=1
 
-# Dummy build-time values so modules that init at import don't crash.
-# These are NOT real secrets - just placeholders to satisfy SDK constructors
-# during static analysis. Real values are injected at runtime.
+# Build-time values: secrets use placeholders (real values injected at runtime).
+# NEXT_PUBLIC_APP_URL is the exception — Next.js inlines it at build time, so it
+# must be the real URL. It is passed via --build-arg from docker compose.
+ARG NEXT_PUBLIC_APP_URL
+ENV NEXT_PUBLIC_APP_URL=$NEXT_PUBLIC_APP_URL
+
 ENV DATABASE_URL="postgresql://build:build@localhost:5432/build"
 ENV AUTH_SECRET="build-placeholder"
 ENV STRIPE_SECRET_KEY="sk_test_build_placeholder"

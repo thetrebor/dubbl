@@ -114,7 +114,7 @@ export async function POST(request: Request) {
     });
 
     // Send welcome and org-created emails (fire and forget)
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://app.dubbl.dev";
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL!;
 
     render(createElement(WelcomeEmail, { userName: parsed.name, loginUrl: `${appUrl}/sign-in` }))
       .then((html) => sendPlatformEmail({ to: parsed.email, subject: "Welcome to dubbl", html }))

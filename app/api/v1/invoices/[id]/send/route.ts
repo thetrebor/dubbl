@@ -85,7 +85,7 @@ export async function POST(
             .set({ paymentLinkToken, updatedAt: new Date() })
             .where(eq(invoice.id, id));
         }
-        const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+        const APP_URL = process.env.NEXT_PUBLIC_APP_URL!;
         templateProps.viewUrl = `${APP_URL}/pay/${paymentLinkToken}`;
         templateProps.buttonLabel = "Pay invoice";
       }

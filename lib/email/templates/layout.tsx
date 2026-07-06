@@ -21,7 +21,7 @@ interface LayoutProps {
   organizationAddress?: string;
 }
 
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "https://dubbl.dev";
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL!;
 
 export function EmailLayout({
   preview,

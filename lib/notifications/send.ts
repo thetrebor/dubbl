@@ -77,7 +77,7 @@ export async function sendNotification(params: SendNotificationParams) {
               createdAt: "Just now",
             },
           ],
-          dashboardUrl: `${process.env.NEXT_PUBLIC_APP_URL || "https://app.dubbl.dev"}/notifications`,
+          dashboardUrl: `${process.env.NEXT_PUBLIC_APP_URL!}/notifications`,
         });
 
         const html = await render(element);

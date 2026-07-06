@@ -416,7 +416,7 @@ export function registerInvoiceTools(server: McpServer, ctx: AuthContext) {
 
         let emailSent = false;
         if (emailCfg) {
-          const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+          const baseUrl = process.env.NEXT_PUBLIC_APP_URL!;
           const signUrl = `${baseUrl}/sign/${token}`;
 
           await sendEmail(emailCfg, {
@@ -505,7 +505,7 @@ export function registerInvoiceTools(server: McpServer, ctx: AuthContext) {
 
         if (!emailCfg) throw new Error("Email is not configured for this organization");
 
-        const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+        const baseUrl = process.env.NEXT_PUBLIC_APP_URL!;
         const signUrl = `${baseUrl}/sign/${sig.token}`;
 
         await sendEmail(emailCfg, {
@@ -628,7 +628,7 @@ export function registerInvoiceTools(server: McpServer, ctx: AuthContext) {
 
         if (!inv) throw new Error("Invoice not found");
 
-        const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+        const baseUrl = process.env.NEXT_PUBLIC_APP_URL!;
         return {
           downloadUrl: `${baseUrl}/api/v1/invoices/${params.invoiceId}/pdf?format=pdf`,
           invoiceNumber: inv.invoiceNumber,

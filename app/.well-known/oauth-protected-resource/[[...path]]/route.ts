@@ -1,5 +1,5 @@
 const APP_URL =
-  process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+  process.env.NEXT_PUBLIC_APP_URL!;
 
 export async function GET() {
   return Response.json(

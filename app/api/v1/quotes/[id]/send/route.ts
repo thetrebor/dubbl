@@ -85,7 +85,7 @@ export async function POST(
             .returning();
           token = created;
         }
-        const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+        const APP_URL = process.env.NEXT_PUBLIC_APP_URL!;
         templateProps.viewUrl = `${APP_URL}/portal/${token.token}/quotes`;
         templateProps.buttonLabel = "View quote";
       }
