@@ -124,7 +124,9 @@ function buildColumns(): Column<Invoice>[] {
       header: "Status",
       className: "w-28",
       render: (r) => {
-        if (r.pendingPaymentExpectedDate) {
+        // Show "expected" only when a payment is pending AND the invoice is not already fully paid.
+        // A stale pending record must not override the paid/partial status on a settled invoice.
+        if (r.pendingPaymentExpectedDate && r.status !== "paid" && r.amountDue > 0) {
           const d = new Date(r.pendingPaymentExpectedDate + "T00:00:00");
           const formatted = `${d.getMonth() + 1}/${String(d.getDate()).padStart(2, "0")}`;
           return (
