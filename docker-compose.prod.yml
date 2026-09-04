@@ -51,7 +51,7 @@ services:
     restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-dubbl}"]
-      interval: 5s
+      interval: 30s
       timeout: 5s
       retries: 5
 
